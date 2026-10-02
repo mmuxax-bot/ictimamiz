@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "İctima",
+      "hasCanvas": false,
+      "bodyTextLen": 431,
+      "bodyTextHash": "be7929b1f72cb461de5c172fb5c03db0cd146ce295c782165f11b1679bbfe878",
+      "bodyTextPrefix": "HƏFTƏLİK QAYIB DƏFTƏRİ İctima Cümə, 2 oktyabr HƏDİS المُسْلِمُ أ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "İctima",
+      "hasCanvas": false,
+      "bodyTextLen": 431,
+      "bodyTextHash": "be7929b1f72cb461de5c172fb5c03db0cd146ce295c782165f11b1679bbfe878",
+      "bodyTextPrefix": "HƏFTƏLİK QAYIB DƏFTƏRİ İctima Cümə, 2 oktyabr HƏDİS المُسْلِمُ أ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

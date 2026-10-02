@@ -1,4 +1,4 @@
-import { query } from './db-raw';
+import { supabase } from './supabase-client';
 import type { Person, Hadith, AttendanceStatus, AttendanceRecord } from './store';
 
 export type SupabaseSnapshot = {
@@ -9,34 +9,33 @@ export type SupabaseSnapshot = {
 
 export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
   try {
-    const peopleRows = await query<{ id: string; ad: string; yaradildi: string }>(
-      'SELECT id, ad, yaradildi FROM meclis_ishtirakchilar ORDER BY ad'
-    );
-    const hadithRows = await query<{ id: string; metn: string; menbe: string | null }>(
-      'SELECT id, metn, menbe FROM meclis_hadisler ORDER BY yaradildi DESC'
-    );
-    const qiyabRows = await query<{
-      person_id: string;
-      week_id: string;
-      day: number;
-      status: AttendanceStatus;
-    }>('SELECT person_id, week_id, day, status FROM meclis_qiyab_qeydleri');
+    const [peopleRes, hadithRes, qiyabRes] = await Promise.all([
+      supabase.from('meclis_ishtirakchilar').select('id, ad, yaradildi').order('ad'),
+      supabase.from('meclis_hadisler').select('id, metn, menbe').order('yaradildi', { ascending: false }),
+      supabase.from('meclis_qiyab_qeydleri').select('person_id, week_id, day, status'),
+    ]);
 
-    const people: Person[] = peopleRows.map((r) => ({
+    if (peopleRes.error || hadithRes.error || qiyabRes.error) {
+      console.error('[sync] pull xetasi:',
+        peopleRes.error?.message || hadithRes.error?.message || qiyabRes.error?.message);
+      return null;
+    }
+
+    const people: Person[] = (peopleRes.data || []).map((r: any) => ({
       id: r.id,
       name: r.ad,
       createdAt: new Date(r.yaradildi).getTime(),
     }));
-    const hadiths: Hadith[] = hadithRows.map((r) => ({
+    const hadiths: Hadith[] = (hadithRes.data || []).map((r: any) => ({
       id: r.id,
       text: r.metn,
       source: r.menbe || '',
     }));
-    const records: AttendanceRecord[] = qiyabRows.map((r) => ({
+    const records: AttendanceRecord[] = (qiyabRes.data || []).map((r: any) => ({
       personId: r.person_id,
       weekId: r.week_id,
       day: r.day,
-      status: r.status,
+      status: r.status as AttendanceStatus,
     }));
 
     return { people, hadiths, records };
@@ -46,14 +45,31 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
   }
 }
 
-// Return: { localId, remoteId } - caller should replace local id with remote id
 export async function pushPerson(person: Person): Promise<{ remoteId: string } | null> {
   try {
-    const rows = await query<{ id: string }>(
-      "INSERT INTO meclis_ishtirakchilar (meclis_id, ad, qiyab) SELECT id, $1, 'var' FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1 RETURNING id",
-      [person.name]
-    );
-    return rows[0] ? { remoteId: rows[0].id } : null;
+    const meclisRes = await supabase
+      .from('meclis_qeydler')
+      .select('id')
+      .order('tarix', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!meclisRes.data) {
+      console.error('[sync] meclis tapilmadi');
+      return null;
+    }
+
+    const insRes = await supabase
+      .from('meclis_ishtirakchilar')
+      .insert({ meclis_id: meclisRes.data.id, ad: person.name, qiyab: 'var' })
+      .select('id')
+      .single();
+
+    if (insRes.error) {
+      console.error('[sync] pushPerson xetasi:', insRes.error.message);
+      return null;
+    }
+    return insRes.data ? { remoteId: insRes.data.id } : null;
   } catch (err) {
     console.error('[sync] pushPerson xetasi:', err);
     return null;
@@ -62,7 +78,8 @@ export async function pushPerson(person: Person): Promise<{ remoteId: string } |
 
 export async function deletePerson(id: string): Promise<void> {
   try {
-    await query('DELETE FROM meclis_ishtirakchilar WHERE id = $1', [id]);
+    const { error } = await supabase.from('meclis_ishtirakchilar').delete().eq('id', id);
+    if (error) console.error('[sync] deletePerson xetasi:', error.message);
   } catch (err) {
     console.error('[sync] deletePerson xetasi:', err);
   }
@@ -70,11 +87,26 @@ export async function deletePerson(id: string): Promise<void> {
 
 export async function pushHadith(hadith: Hadith): Promise<{ remoteId: string } | null> {
   try {
-    const rows = await query<{ id: string }>(
-      "INSERT INTO meclis_hadisler (meclis_id, metn, menbe) SELECT id, $1, $2 FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1 RETURNING id",
-      [hadith.text, hadith.source]
-    );
-    return rows[0] ? { remoteId: rows[0].id } : null;
+    const meclisRes = await supabase
+      .from('meclis_qeydler')
+      .select('id')
+      .order('tarix', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!meclisRes.data) return null;
+
+    const insRes = await supabase
+      .from('meclis_hadisler')
+      .insert({ meclis_id: meclisRes.data.id, metn: hadith.text, menbe: hadith.source })
+      .select('id')
+      .single();
+
+    if (insRes.error) {
+      console.error('[sync] pushHadith xetasi:', insRes.error.message);
+      return null;
+    }
+    return insRes.data ? { remoteId: insRes.data.id } : null;
   } catch (err) {
     console.error('[sync] pushHadith xetasi:', err);
     return null;
@@ -83,7 +115,8 @@ export async function pushHadith(hadith: Hadith): Promise<{ remoteId: string } |
 
 export async function deleteHadith(id: string): Promise<void> {
   try {
-    await query('DELETE FROM meclis_hadisler WHERE id = $1', [id]);
+    const { error } = await supabase.from('meclis_hadisler').delete().eq('id', id);
+    if (error) console.error('[sync] deleteHadith xetasi:', error.message);
   } catch (err) {
     console.error('[sync] deleteHadith xetasi:', err);
   }
@@ -97,16 +130,22 @@ export async function pushAttendance(
 ): Promise<void> {
   try {
     if (status === null) {
-      await query(
-        'DELETE FROM meclis_qiyab_qeydleri WHERE person_id = $1 AND week_id = $2 AND day = $3',
-        [personId, weekId, day]
-      );
+      const { error } = await supabase
+        .from('meclis_qiyab_qeydleri')
+        .delete()
+        .eq('person_id', personId)
+        .eq('week_id', weekId)
+        .eq('day', day);
+      if (error) console.error('[sync] deleteAttendance xetasi:', error.message);
       return;
     }
-    await query(
-      'INSERT INTO meclis_qiyab_qeydleri (person_id, week_id, day, status) VALUES ($1, $2, $3, $4) ON CONFLICT (person_id, week_id, day) DO UPDATE SET status = $4, yenilendi = NOW()',
-      [personId, weekId, day, status]
-    );
+    const { error } = await supabase
+      .from('meclis_qiyab_qeydleri')
+      .upsert(
+        { person_id: personId, week_id: weekId, day, status },
+        { onConflict: 'person_id,week_id,day' }
+      );
+    if (error) console.error('[sync] pushAttendance xetasi:', error.message);
   } catch (err) {
     console.error('[sync] pushAttendance xetasi:', err);
   }
@@ -114,14 +153,19 @@ export async function pushAttendance(
 
 export async function ensureInitialMeclis(): Promise<void> {
   try {
-    const rows = await query<{ id: string }>('SELECT id FROM meclis_qeydler LIMIT 1');
-    if (rows.length === 0) {
+    const res = await supabase.from('meclis_qeydler').select('id').limit(1);
+
+    if (res.error) {
+      console.error('[sync] ensureInitialMeclis xetasi:', res.error.message);
+      return;
+    }
+    if (!res.data || res.data.length === 0) {
       const today = new Date().toISOString().slice(0, 10);
-      await query('INSERT INTO meclis_qeydler (tarix, movzu) VALUES ($1, $2)', [
-        today,
-        'Ilk meclis',
-      ]);
-      console.log('[sync] ilk meclis yaradildi');
+      const ins = await supabase
+        .from('meclis_qeydler')
+        .insert({ tarix: today, movzu: 'Ilk meclis' });
+      if (ins.error) console.error('[sync] meclis yaratma xetasi:', ins.error.message);
+      else console.log('[sync] ilk meclis yaradildi');
     }
   } catch (err) {
     console.error('[sync] ensureInitialMeclis xetasi:', err);

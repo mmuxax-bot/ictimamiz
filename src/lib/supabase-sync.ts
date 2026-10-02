@@ -46,14 +46,17 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
   }
 }
 
-export async function pushPerson(person: Person): Promise<void> {
+// Return: { localId, remoteId } - caller should replace local id with remote id
+export async function pushPerson(person: Person): Promise<{ remoteId: string } | null> {
   try {
-    await query(
-      "INSERT INTO meclis_ishtirakchilar (meclis_id, ad, qiyab) SELECT id, $1, 'var' FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1",
+    const rows = await query<{ id: string }>(
+      "INSERT INTO meclis_ishtirakchilar (meclis_id, ad, qiyab) SELECT id, $1, 'var' FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1 RETURNING id",
       [person.name]
     );
+    return rows[0] ? { remoteId: rows[0].id } : null;
   } catch (err) {
     console.error('[sync] pushPerson xetasi:', err);
+    return null;
   }
 }
 
@@ -65,14 +68,16 @@ export async function deletePerson(id: string): Promise<void> {
   }
 }
 
-export async function pushHadith(hadith: Hadith): Promise<void> {
+export async function pushHadith(hadith: Hadith): Promise<{ remoteId: string } | null> {
   try {
-    await query(
-      "INSERT INTO meclis_hadisler (meclis_id, metn, menbe) SELECT id, $1, $2 FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1",
+    const rows = await query<{ id: string }>(
+      "INSERT INTO meclis_hadisler (meclis_id, metn, menbe) SELECT id, $1, $2 FROM meclis_qeydler ORDER BY tarix DESC LIMIT 1 RETURNING id",
       [hadith.text, hadith.source]
     );
+    return rows[0] ? { remoteId: rows[0].id } : null;
   } catch (err) {
     console.error('[sync] pushHadith xetasi:', err);
+    return null;
   }
 }
 

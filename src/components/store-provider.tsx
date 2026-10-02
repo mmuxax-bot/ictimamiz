@@ -12,6 +12,8 @@ import {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
+    let syncing = false;
+
     const finish = () => {
       const current = useAppStore.getState();
       const migrated = migrateHadiths(current.hadiths, current.hadithSeedVersion);
@@ -27,18 +29,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const result = useAppStore.persist.rehydrate();
     const afterHydrate = () => {
       finish();
+      syncing = true;
       void ensureInitialMeclis().then(() =>
         pullFromSupabase().then((data) => {
-          if (
-            data &&
-            (data.people.length > 0 || data.hadiths.length > 0 || data.records.length > 0)
-          ) {
+          if (data) {
             useAppStore.setState({
-              people: data.people.length > 0 ? data.people : useAppStore.getState().people,
-              hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
-              records: data.records.length > 0 ? data.records : useAppStore.getState().records,
+              people: data.people,
+              hadiths: data.hadiths,
+              records: data.records,
             });
           }
+          syncing = false;
         }),
       );
     };
@@ -56,22 +57,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, 80);
 
     const unsub = useAppStore.subscribe((state, prev) => {
+      if (syncing) return;
+
+      // Yeni shexs - Supabase-e yaz, ID-ni deyish
       if (state.people.length > prev.people.length) {
         const added = state.people.find((p) => !prev.people.some((pp) => pp.id === p.id));
-        if (added) void pushPerson(added);
+        if (added) {
+          void pushPerson(added).then((res) => {
+            if (res && res.remoteId !== added.id) {
+              // Lokal ID-ni Supabase ID-si ile evezle
+              const current = useAppStore.getState();
+              useAppStore.setState({
+                people: current.people.map((p) =>
+                  p.id === added.id ? { ...p, id: res.remoteId } : p
+                ),
+                records: current.records.map((r) =>
+                  r.personId === added.id ? { ...r, personId: res.remoteId } : r
+                ),
+              });
+            }
+          });
+        }
       }
+
+      // Shexs silindi
       if (state.people.length < prev.people.length) {
         const removed = prev.people.find((p) => !state.people.some((pp) => pp.id === p.id));
         if (removed) void deletePerson(removed.id);
       }
+
+      // Yeni hedis
       if (state.hadiths.length > prev.hadiths.length) {
         const added = state.hadiths.find((h) => !prev.hadiths.some((hh) => hh.id === h.id));
-        if (added) void pushHadith(added);
+        if (added) {
+          void pushHadith(added).then((res) => {
+            if (res && res.remoteId !== added.id) {
+              const current = useAppStore.getState();
+              useAppStore.setState({
+                hadiths: current.hadiths.map((h) =>
+                  h.id === added.id ? { ...h, id: res.remoteId } : h
+                ),
+              });
+            }
+          });
+        }
       }
+
+      // Hedis silindi
       if (state.hadiths.length < prev.hadiths.length) {
         const removed = prev.hadiths.find((h) => !state.hadiths.some((hh) => hh.id === h.id));
         if (removed) void deleteHadith(removed.id);
       }
+
+      // Qiyab deyishdi
       if (state.records !== prev.records) {
         for (const r of state.records) {
           const old = prev.records.find(

@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL || 'https://pixvyrzckojqfyxjydcz.supabase.co';
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_BOwjzew3cwAds0zchXDfIA_gcxVXQnz';
+export const supabase = createClient(
+  'https://pixvyrzckojqfyxjydcz.supabase.co',
+  'sb_publishable_BOwjzew3cwAds0zchXDfIA_gcxVXQnz',
+  { auth: { persistSession: false } }
+);
 
-export const supabase = createClient(url, key, {
-  auth: { persistSession: false },
-});
+console.log('[supabase] client hazir:', 'https://pixvyrzckojqfyxjydcz.supabase.co');

@@ -9,6 +9,7 @@ import {
   deleteHadith,
   pushAttendance,
 } from "@/lib/supabase-sync";
+import { testSupabaseConnection } from "@/lib/supabase-test";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -30,18 +31,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const afterHydrate = () => {
       finish();
       syncing = true;
-      void ensureInitialMeclis().then(() =>
-        pullFromSupabase().then((data) => {
-          if (data) {
-            useAppStore.setState({
-              people: data.people,
-              hadiths: data.hadiths,
-              records: data.records,
-            });
-          }
+      console.log("[store] hydration tamam, Supabase sync bashlayir...");
+
+      void testSupabaseConnection().then((ok) => {
+        if (!ok) {
+          console.error("[store] Supabase-e qoshulmadi, sync deaktiv");
           syncing = false;
-        }),
-      );
+          return;
+        }
+        void ensureInitialMeclis().then(() => {
+          console.log("[store] meclis hazir, pull edilir...");
+          void pullFromSupabase().then((data) => {
+            console.log("[store] pull neticesi:", data);
+            if (data) {
+              useAppStore.setState({
+                people: data.people,
+                hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
+                records: data.records,
+              });
+            }
+            syncing = false;
+            console.log("[store] sync hazir");
+          });
+        });
+      });
     };
 
     if (result && typeof result.then === "function") {
@@ -59,13 +72,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const unsub = useAppStore.subscribe((state, prev) => {
       if (syncing) return;
 
-      // Yeni shexs - Supabase-e yaz, ID-ni deyish
       if (state.people.length > prev.people.length) {
         const added = state.people.find((p) => !prev.people.some((pp) => pp.id === p.id));
         if (added) {
+          console.log("[store] yeni shexs, Supabase-e yazilir:", added.name);
           void pushPerson(added).then((res) => {
+            console.log("[store] pushPerson neticesi:", res);
             if (res && res.remoteId !== added.id) {
-              // Lokal ID-ni Supabase ID-si ile evezle
               const current = useAppStore.getState();
               useAppStore.setState({
                 people: current.people.map((p) =>
@@ -80,13 +93,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Shexs silindi
       if (state.people.length < prev.people.length) {
         const removed = prev.people.find((p) => !state.people.some((pp) => pp.id === p.id));
         if (removed) void deletePerson(removed.id);
       }
 
-      // Yeni hedis
       if (state.hadiths.length > prev.hadiths.length) {
         const added = state.hadiths.find((h) => !prev.hadiths.some((hh) => hh.id === h.id));
         if (added) {
@@ -103,13 +114,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Hedis silindi
       if (state.hadiths.length < prev.hadiths.length) {
         const removed = prev.hadiths.find((h) => !state.hadiths.some((hh) => hh.id === h.id));
         if (removed) void deleteHadith(removed.id);
       }
 
-      // Qiyab deyishdi
       if (state.records !== prev.records) {
         for (const r of state.records) {
           const old = prev.records.find(

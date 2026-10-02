@@ -1,10 +1,10 @@
 import { query } from './db-raw';
-import type { Person, Hadith, AttendanceStatus } from './store';
+import type { Person, Hadith, AttendanceStatus, AttendanceRecord } from './store';
 
 export type SupabaseSnapshot = {
   people: Person[];
   hadiths: Hadith[];
-  records: [];
+  records: AttendanceRecord[];
 };
 
 export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
@@ -15,6 +15,13 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
     const hadithRows = await query<{ id: string; metn: string; menbe: string | null }>(
       'SELECT id, metn, menbe FROM meclis_hadisler ORDER BY yaradildi DESC'
     );
+    const qiyabRows = await query<{
+      person_id: string;
+      week_id: string;
+      day: number;
+      status: AttendanceStatus;
+    }>('SELECT person_id, week_id, day, status FROM meclis_qiyab_qeydleri');
+
     const people: Person[] = peopleRows.map((r) => ({
       id: r.id,
       name: r.ad,
@@ -25,7 +32,14 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
       text: r.metn,
       source: r.menbe || '',
     }));
-    return { people, hadiths, records: [] };
+    const records: AttendanceRecord[] = qiyabRows.map((r) => ({
+      personId: r.person_id,
+      weekId: r.week_id,
+      day: r.day,
+      status: r.status,
+    }));
+
+    return { people, hadiths, records };
   } catch (err) {
     console.error('[sync] pull xetasi:', err);
     return null;
@@ -72,18 +86,22 @@ export async function deleteHadith(id: string): Promise<void> {
 
 export async function pushAttendance(
   personId: string,
+  weekId: string,
+  day: number,
   status: AttendanceStatus | null
 ): Promise<void> {
   try {
-    const qiyab =
-      status === 'present'
-        ? 'var'
-        : status === 'excused'
-          ? 'icaze'
-          : status === 'unexcused'
-            ? 'yox'
-            : 'var';
-    await query('UPDATE meclis_ishtirakchilar SET qiyab = $1 WHERE id = $2', [qiyab, personId]);
+    if (status === null) {
+      await query(
+        'DELETE FROM meclis_qiyab_qeydleri WHERE person_id = $1 AND week_id = $2 AND day = $3',
+        [personId, weekId, day]
+      );
+      return;
+    }
+    await query(
+      'INSERT INTO meclis_qiyab_qeydleri (person_id, week_id, day, status) VALUES ($1, $2, $3, $4) ON CONFLICT (person_id, week_id, day) DO UPDATE SET status = $4, yenilendi = NOW()',
+      [personId, weekId, day, status]
+    );
   } catch (err) {
     console.error('[sync] pushAttendance xetasi:', err);
   }

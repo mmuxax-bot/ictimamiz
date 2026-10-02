@@ -7,16 +7,14 @@ import {
   deletePerson,
   pushHadith,
   deleteHadith,
+  pushAttendance,
 } from "@/lib/supabase-sync";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const finish = () => {
       const current = useAppStore.getState();
-      const migrated = migrateHadiths(
-        current.hadiths,
-        current.hadithSeedVersion,
-      );
+      const migrated = migrateHadiths(current.hadiths, current.hadithSeedVersion);
       useAppStore.setState({
         hadiths: migrated.hadiths,
         hadithSeedVersion: migrated.hadithSeedVersion,
@@ -29,13 +27,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const result = useAppStore.persist.rehydrate();
     const afterHydrate = () => {
       finish();
-      // Supabase-den oxu
       void ensureInitialMeclis().then(() =>
         pullFromSupabase().then((data) => {
-          if (data && (data.people.length > 0 || data.hadiths.length > 0)) {
+          if (
+            data &&
+            (data.people.length > 0 || data.hadiths.length > 0 || data.records.length > 0)
+          ) {
             useAppStore.setState({
               people: data.people.length > 0 ? data.people : useAppStore.getState().people,
               hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
+              records: data.records.length > 0 ? data.records : useAppStore.getState().records,
             });
           }
         }),
@@ -54,27 +55,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     }, 80);
 
-    // Store deyishdikde Supabase-e yaz
     const unsub = useAppStore.subscribe((state, prev) => {
-      // Yeni shexs
       if (state.people.length > prev.people.length) {
         const added = state.people.find((p) => !prev.people.some((pp) => pp.id === p.id));
         if (added) void pushPerson(added);
       }
-      // Shexs silindi
       if (state.people.length < prev.people.length) {
         const removed = prev.people.find((p) => !state.people.some((pp) => pp.id === p.id));
         if (removed) void deletePerson(removed.id);
       }
-      // Yeni hedis
       if (state.hadiths.length > prev.hadiths.length) {
         const added = state.hadiths.find((h) => !prev.hadiths.some((hh) => hh.id === h.id));
         if (added) void pushHadith(added);
       }
-      // Hedis silindi
       if (state.hadiths.length < prev.hadiths.length) {
         const removed = prev.hadiths.find((h) => !state.hadiths.some((hh) => hh.id === h.id));
         if (removed) void deleteHadith(removed.id);
+      }
+      if (state.records !== prev.records) {
+        for (const r of state.records) {
+          const old = prev.records.find(
+            (p) => p.personId === r.personId && p.weekId === r.weekId && p.day === r.day
+          );
+          if (!old || old.status !== r.status) {
+            void pushAttendance(r.personId, r.weekId, r.day, r.status);
+          }
+        }
+        for (const old of prev.records) {
+          const exists = state.records.some(
+            (r) => r.personId === old.personId && r.weekId === old.weekId && r.day === old.day
+          );
+          if (!exists) {
+            void pushAttendance(old.personId, old.weekId, old.day, null);
+          }
+        }
       }
     });
 

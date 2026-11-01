@@ -3,5 +3,7 @@
   "launcherType": "Nodejs",
   "shouldAddHelpers": false,
   "supportsResponseStreaming": true,
-  "runtime": "nodejs22.x"
+  "runtime": "nodejs22.x",
+  "maxDuration": 60,
+  "memory": 1024
 }

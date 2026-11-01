@@ -179,6 +179,8 @@ export default defineConfig(({ command, isPreview }) => ({
             vercel: {
               functions: {
                 runtime: "nodejs22.x",
+                maxDuration: 60,
+                memory: 1024,
               },
             },
           }),

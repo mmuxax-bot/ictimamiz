@@ -1,17 +1,17 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-Dh9AeWuQ.js
+//#region node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-BjVpN-cp.js
 var tsrStartManifest = () => ({ routes: {
 	__root__: {
 		filePath: "/workspace/ictimamiz/src/routes/__root.tsx",
 		children: ["/", "/admin"],
 		preloads: [
-			"/assets/index-1snpMDXR.js",
+			"/assets/index-DgZKjS66.js",
 			"/assets/rolldown-runtime-CbXtAM7H.js",
 			"/assets/store-C_-zcho2.js"
 		],
 		scripts: [{ attrs: {
 			type: "module",
 			async: !0,
-			src: "/assets/index-1snpMDXR.js"
+			src: "/assets/index-DgZKjS66.js"
 		} }]
 	},
 	"/": {
@@ -22,7 +22,7 @@ var tsrStartManifest = () => ({ routes: {
 	"/admin": {
 		filePath: "/workspace/ictimamiz/src/routes/admin.tsx",
 		children: void 0,
-		preloads: ["/assets/admin-Hn5FOvPu.js", "/assets/use-today-NQwKOBVe.js"]
+		preloads: ["/assets/admin-DFwZXZcf.js", "/assets/use-today-NQwKOBVe.js"]
 	}
 } });
 //#endregion

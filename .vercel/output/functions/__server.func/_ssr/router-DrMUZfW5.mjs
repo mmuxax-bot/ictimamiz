@@ -6,7 +6,7 @@ import { a as union, i as string, n as number, r as object, t as literal } from 
 import { n as persist, r as create, t as createJSONStorage } from "../_libs/zustand.mjs";
 import { t as createClient } from "../_libs/supabase__supabase-js.mjs";
 import { t as Toaster } from "../_libs/sonner.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-CCxKu27x.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-DrMUZfW5.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var __defProp = Object.defineProperty;
@@ -502,6 +502,7 @@ var env = {
 	"TSS_INLINE_CSS_ENABLED": "false",
 	"TSS_ROUTER_BASEPATH": "",
 	"TSS_SERVER_FN_BASE": "/_serverFn/",
+	"VITE_AUTH_ENABLED": "false",
 	"VITE_REVENUECAT_ANDROID_API_KEY": "goog_jaVuCGjMDAlKvNeptmmErHMpmKb"
 };
 var SUPABASE_URL = env.VITE_SUPABASE_URL || DEFAULT_URL;
@@ -853,9 +854,9 @@ function RootDocument() {
 		] })]
 	});
 }
-var $$splitComponentImporter$1 = () => import("./routes-ifBl103o.mjs");
+var $$splitComponentImporter$1 = () => import("./routes-CY-C_7yo.mjs");
 var Route$1 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
-var $$splitComponentImporter = () => import("./admin-BBxXPcEu.mjs");
+var $$splitComponentImporter = () => import("./admin-Trvq3TqM.mjs");
 var Route = createFileRoute("/admin")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
 var rootRouteChildren = {
 	IndexRoute: Route$1.update({

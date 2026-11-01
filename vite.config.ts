@@ -175,6 +175,12 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
+            // nodejs24.x was failing Vercel Hobby with "Resource provisioning failed".
+            vercel: {
+              functions: {
+                runtime: "nodejs22.x",
+              },
+            },
           }),
         ]
       : []),

@@ -89,6 +89,7 @@ type AppState = {
   records: AttendanceRecord[];
   hadithSeedVersion: number;
   hasHydrated: boolean;
+  syncStatus: "idle" | "syncing" | "online" | "offline";
   setHasHydrated: (value: boolean) => void;
   addPerson: (name: string) => ActionResult;
   removePerson: (id: string) => void;
@@ -136,6 +137,7 @@ export const useAppStore = create<AppState>()(
       records: [],
       hadithSeedVersion: HADITH_SEED_VERSION,
       hasHydrated: false,
+      syncStatus: "idle",
       setHasHydrated: (value) => set({ hasHydrated: value }),
       addPerson: (rawName) => {
         const name = rawName.trim().replace(/\s+/g, " ");

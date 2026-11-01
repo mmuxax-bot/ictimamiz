@@ -26,12 +26,12 @@ export function AdminGate({ onUnlock }: { onUnlock: () => void }) {
       <form
         onSubmit={onSubmit}
         className={cn(
-          "w-full max-w-sm rounded-xl border border-border bg-surface p-6 sm:p-8",
+          "card-premium rise w-full max-w-sm p-7 sm:p-9",
           shake && "shake",
         )}
       >
         <p className="text-xs font-medium tracking-kicker text-accent uppercase">İctima</p>
-        <h1 className="mt-3 font-display text-3xl text-fg">Giriş</h1>
+        <h1 className="mt-3 font-display text-4xl font-semibold text-fg">Giriş</h1>
         <p className="mt-2 text-sm text-muted">Admin kodunu daxil edin.</p>
         <label className="mt-6 block text-sm font-medium text-fg" htmlFor="admin-code">
           Kod

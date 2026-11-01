@@ -38,20 +38,20 @@ export function AdminPanel({ onLock }: { onLock: () => void }) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:py-12">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-10 sm:py-14 rise">
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-medium tracking-kicker text-accent uppercase">
             Gizli panel
           </p>
-          <h1 className="mt-2 font-display text-4xl text-fg">Admin</h1>
+          <h1 className="mt-2 font-display text-5xl font-semibold leading-none text-fg">Admin</h1>
         </div>
         <Button variant="ghost" size="icon" onClick={lock} aria-label="Çıxış">
           <LogOut className="size-4" />
         </Button>
       </header>
 
-      <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
+      <div className="flex gap-1 rounded-full border border-border/70 bg-surface/70 p-1 backdrop-blur">
         <TabButton active={tab === "defter"} onClick={() => setTab("defter")}>
           Dəftər
         </TabButton>
@@ -79,8 +79,8 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "h-11 flex-1 rounded-md text-sm font-medium transition-colors duration-150",
-        active ? "bg-elevated text-fg" : "text-muted hover:text-fg",
+        "h-11 flex-1 rounded-full text-sm font-medium transition-all duration-200",
+        active ? "bg-elevated text-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.06)] ring-1 ring-accent/25" : "text-muted hover:text-fg",
       )}
     >
       {children}
@@ -160,7 +160,7 @@ function LedgerTab() {
         </Button>
       </form>
 
-      <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <div className="card-premium p-5 sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <Button
             type="button"
@@ -239,12 +239,12 @@ function LedgerTab() {
 
       <section className="flex flex-col gap-4">
         <div>
-          <h2 className="font-display text-2xl text-fg">{dayMeta.full}</h2>
+          <h2 className="font-display text-3xl font-semibold text-fg">{dayMeta.full}</h2>
           <p className="text-sm text-muted">{formatDayMonth(dayDate)}</p>
         </div>
 
         {people.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted">
+          <p className="rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-12 text-center text-sm text-muted">
             Siyahı boşdur. Yuxarıdan ad əlavə edin.
           </p>
         ) : (
@@ -254,7 +254,7 @@ function LedgerTab() {
               return (
                 <li
                   key={person.id}
-                  className="rounded-xl border border-border bg-surface p-4"
+                  className="card-premium p-5 transition-colors hover:border-accent/30"
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <p className="font-medium text-fg">{person.name}</p>
@@ -309,7 +309,7 @@ function HadithTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={onAdd} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <form onSubmit={onAdd} className="flex flex-col gap-3 card-premium p-5 sm:p-6">
         <label className="text-sm font-medium text-fg" htmlFor="hadith-text">
           Yeni hədis
         </label>
@@ -338,7 +338,7 @@ function HadithTab() {
       </form>
 
       {hadiths.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted">
+        <p className="rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-12 text-center text-sm text-muted">
           Hədis yoxdur. Ana səhifədəki kart buradan doldurulur.
         </p>
       ) : (

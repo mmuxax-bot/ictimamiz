@@ -5,30 +5,30 @@ export function AbsenteeBoard() {
   const records = useAppStore((s) => s.records);
   const hydrated = useAppStore((s) => s.hasHydrated);
 
-  if (!hydrated) return null;
+  if (!hydrated) return <SectionSkeleton />;
 
   const ranked = rankAbsentees(people, records);
   const max = Math.max(...ranked.map((r) => r.absences), 1);
 
   return (
-    <section className="rounded-xl border border-border bg-surface/80 p-5 sm:p-6">
+    <section className="card-premium p-6 sm:p-8">
       <div className="mb-5 flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium tracking-kicker text-accent uppercase">
             Sıralama
           </p>
-          <h2 className="mt-2 font-display text-2xl text-fg">Bütün adlar</h2>
+          <h2 className="mt-2 font-display text-3xl font-semibold text-fg">Bütün adlar</h2>
         </div>
         <p className="text-xs text-subtle">Üzürsüz üstün tutulur</p>
       </div>
       {ranked.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
+        <p className="rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-10 text-center text-sm text-muted">
           Hələ ad əlavə edilməyib. Admin paneldən adlar buraya düşəcək.
         </p>
       ) : (
         <ol className="space-y-3">
           {ranked.map((row, i) => (
-            <li key={row.person.id} className="grid grid-cols-[1.5rem_1fr_auto] items-center gap-3">
+            <li key={row.person.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-elevated/40">
               <span className="font-display text-lg text-muted tabular-nums">{i + 1}</span>
               <div className="min-w-0">
                 <div className="flex items-baseline justify-between gap-3">
@@ -51,6 +51,16 @@ export function AbsenteeBoard() {
           ))}
         </ol>
       )}
+    </section>
+  );
+}
+function SectionSkeleton() {
+  return (
+    <section className="card-premium space-y-4 p-6 sm:p-8" aria-busy="true">
+      <div className="skeleton h-3 w-20" />
+      <div className="skeleton h-7 w-40" />
+      <div className="skeleton h-4 w-full" />
+      <div className="skeleton h-4 w-5/6" />
     </section>
   );
 }

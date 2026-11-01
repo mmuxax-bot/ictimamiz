@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { migrateHadiths, useAppStore } from "@/lib/store";
+import { migrateHadiths, SEED_HADITHS, useAppStore } from "@/lib/store";
 import {
   ensureInitialMeclis,
   pullFromSupabase,
@@ -8,6 +8,7 @@ import {
   pushHadith,
   deleteHadith,
   pushAttendance,
+  seedHadithsIfEmpty,
 } from "@/lib/supabase-sync";
 import { testSupabaseConnection } from "@/lib/supabase-test";
 
@@ -28,39 +29,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const result = useAppStore.persist.rehydrate();
-    const afterHydrate = () => {
+    const afterHydrate = async () => {
       finish();
       syncing = true;
-      console.log("[store] hydration tamam, Supabase sync bashlayir...");
-
-      void testSupabaseConnection().then((ok) => {
+      useAppStore.setState({ syncStatus: "syncing" });
+      try {
+        const ok = await testSupabaseConnection();
         if (!ok) {
-          console.error("[store] Supabase-e qoshulmadi, sync deaktiv");
-          syncing = false;
+          useAppStore.setState({ syncStatus: "offline" });
           return;
         }
-        void ensureInitialMeclis().then(() => {
-          console.log("[store] meclis hazir, pull edilir...");
-          void pullFromSupabase().then((data) => {
-            console.log("[store] pull neticesi:", data);
-            if (data) {
-              useAppStore.setState({
-                people: data.people,
-                hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
-                records: data.records,
-              });
-            }
-            syncing = false;
-            console.log("[store] sync hazir");
-          });
+        await ensureInitialMeclis();
+        await seedHadithsIfEmpty(SEED_HADITHS);
+        let data = await pullFromSupabase();
+        if (!data) {
+          useAppStore.setState({ syncStatus: "offline" });
+          return;
+        }
+        // One-time migration: local-only people/records -> Supabase.
+        if (data.people.length === 0) {
+          const local = useAppStore.getState();
+          if (local.people.length > 0) {
+            for (const p of local.people) await pushPerson(p);
+            for (const r of local.records) await pushAttendance(r.personId, r.weekId, r.day, r.status);
+            data = (await pullFromSupabase()) ?? data;
+          }
+        }
+        useAppStore.setState({
+          people: [...data.people].sort((a, b) => a.name.localeCompare(b.name, "az")),
+          hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
+          records: data.records,
+          syncStatus: "online",
         });
-      });
+      } finally {
+        syncing = false;
+      }
     };
 
     if (result && typeof result.then === "function") {
-      void result.then(afterHydrate);
+      void result.then(() => void afterHydrate());
     } else {
-      afterHydrate();
+      void afterHydrate();
     }
 
     const timeout = window.setTimeout(() => {
@@ -75,9 +84,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (state.people.length > prev.people.length) {
         const added = state.people.find((p) => !prev.people.some((pp) => pp.id === p.id));
         if (added) {
-          console.log("[store] yeni shexs, Supabase-e yazilir:", added.name);
           void pushPerson(added).then((res) => {
-            console.log("[store] pushPerson neticesi:", res);
             if (res && res.remoteId !== added.id) {
               const current = useAppStore.getState();
               useAppStore.setState({

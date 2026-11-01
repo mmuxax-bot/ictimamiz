@@ -5,9 +5,9 @@ import { a as editBlockReason, c as isFriday, d as mondayFromWeekId, f as shiftW
 import { x as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
 import { a as ChevronRight, i as LogOut, n as Trash2, o as ChevronLeft, r as Plus } from "../_libs/lucide-react.mjs";
 import { n as toast } from "../_libs/sonner.mjs";
-import { i as findRecord, o as useAppStore, r as ADMIN_SESSION_KEY } from "./router-CAOOh__b.mjs";
+import { i as findRecord, o as useAppStore, r as ADMIN_SESSION_KEY } from "./router-CCxKu27x.mjs";
 import { t as Slot } from "../_libs/radix-ui__react-slot.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/admin-CyG-8MSR.js
+//#region node_modules/.nitro/vite/services/ssr/assets/admin-BBxXPcEu.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var buttonVariants = cva("inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-[opacity,transform,background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98]", {
@@ -68,14 +68,14 @@ function AdminGate({ onUnlock }) {
 		className: "flex min-h-dvh items-center justify-center px-4",
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", {
 			onSubmit,
-			className: cn("w-full max-w-sm rounded-xl border border-border bg-surface p-6 sm:p-8", shake && "shake"),
+			className: cn("card-premium rise w-full max-w-sm p-7 sm:p-9", shake && "shake"),
 			children: [
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "text-xs font-medium tracking-kicker text-accent uppercase",
 					children: "İctima"
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
-					className: "mt-3 font-display text-3xl text-fg",
+					className: "mt-3 font-display text-4xl font-semibold text-fg",
 					children: "Giriş"
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
@@ -158,7 +158,7 @@ function AdminPanel({ onLock }) {
 		onLock();
 	}
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-		className: "mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:py-12",
+		className: "mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-10 sm:py-14 rise",
 		children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", {
 				className: "flex items-start justify-between gap-4",
@@ -166,7 +166,7 @@ function AdminPanel({ onLock }) {
 					className: "text-xs font-medium tracking-kicker text-accent uppercase",
 					children: "Gizli panel"
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
-					className: "mt-2 font-display text-4xl text-fg",
+					className: "mt-2 font-display text-5xl font-semibold leading-none text-fg",
 					children: "Admin"
 				})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
 					variant: "ghost",
@@ -177,7 +177,7 @@ function AdminPanel({ onLock }) {
 				})]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "flex gap-1 rounded-lg bg-surface p-1 border border-border",
+				className: "flex gap-1 rounded-full border border-border/70 bg-surface/70 p-1 backdrop-blur",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(TabButton, {
 					active: tab === "defter",
 					onClick: () => setTab("defter"),
@@ -196,7 +196,7 @@ function TabButton({ active, onClick, children }) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
 		type: "button",
 		onClick,
-		className: cn("h-11 flex-1 rounded-md text-sm font-medium transition-colors duration-150", active ? "bg-elevated text-fg" : "text-muted hover:text-fg"),
+		className: cn("h-11 flex-1 rounded-full text-sm font-medium transition-all duration-200", active ? "bg-elevated text-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.06)] ring-1 ring-accent/25" : "text-muted hover:text-fg"),
 		children
 	});
 }
@@ -267,7 +267,7 @@ function LedgerTab() {
 				})]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "rounded-xl border border-border bg-surface p-4 sm:p-5",
+				className: "card-premium p-5 sm:p-6",
 				children: [
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 						className: "flex items-center justify-between gap-2",
@@ -341,20 +341,20 @@ function LedgerTab() {
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", {
 				className: "flex flex-col gap-4",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
-					className: "font-display text-2xl text-fg",
+					className: "font-display text-3xl font-semibold text-fg",
 					children: dayMeta.full
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "text-sm text-muted",
 					children: formatDayMonth(dayDate)
 				})] }), people.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-					className: "rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted",
+					className: "rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-12 text-center text-sm text-muted",
 					children: "Siyahı boşdur. Yuxarıdan ad əlavə edin."
 				}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
 					className: "flex flex-col gap-3",
 					children: people.map((person) => {
 						const rec = findRecord(records, person.id, weekId, day);
 						return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", {
-							className: "rounded-xl border border-border bg-surface p-4",
+							className: "card-premium p-5 transition-colors hover:border-accent/30",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 								className: "mb-3 flex items-start justify-between gap-3",
 								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
@@ -402,7 +402,7 @@ function HadithTab() {
 		className: "flex flex-col gap-6",
 		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", {
 			onSubmit: onAdd,
-			className: "flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5",
+			className: "flex flex-col gap-3 card-premium p-5 sm:p-6",
 			children: [
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
 					className: "text-sm font-medium text-fg",
@@ -434,7 +434,7 @@ function HadithTab() {
 				})
 			]
 		}), hadiths.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-			className: "rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted",
+			className: "rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-12 text-center text-sm text-muted",
 			children: "Hədis yoxdur. Ana səhifədəki kart buradan doldurulur."
 		}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
 			className: "flex flex-col gap-3",

@@ -1,6 +1,36 @@
 import { supabase } from './supabase-client';
 import type { Person, Hadith, AttendanceStatus, AttendanceRecord } from './store';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (id: string) => UUID_RE.test(id);
+
+let meclisIdCache: string | null = null;
+async function currentMeclisId(): Promise<string | null> {
+  if (meclisIdCache) return meclisIdCache;
+  const res = await supabase
+    .from('meclis_qeydler')
+    .select('id')
+    .order('tarix', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  meclisIdCache = res.data?.id ?? null;
+  return meclisIdCache;
+}
+
+/** Seed hadiths into Supabase once when the table is empty. */
+export async function seedHadithsIfEmpty(seed: Hadith[]): Promise<void> {
+  const { count, error } = await supabase
+    .from('meclis_hadisler')
+    .select('id', { count: 'exact', head: true });
+  if (error || (count ?? 0) > 0) return;
+  const meclisId = await currentMeclisId();
+  if (!meclisId) return;
+  // Insert oldest-last so ordering by yaradildi keeps seed order stable.
+  const rows = seed.map((h) => ({ meclis_id: meclisId, metn: h.text, menbe: h.source }));
+  const ins = await supabase.from('meclis_hadisler').insert(rows);
+  if (ins.error) console.error('[sync] hadis seed xətası:', ins.error.message);
+}
+
 export type SupabaseSnapshot = {
   people: Person[];
   hadiths: Hadith[];
@@ -11,7 +41,7 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
   try {
     const [peopleRes, hadithRes, qiyabRes] = await Promise.all([
       supabase.from('meclis_ishtirakchilar').select('id, ad, yaradildi').order('ad'),
-      supabase.from('meclis_hadisler').select('id, metn, menbe').order('yaradildi', { ascending: false }),
+      supabase.from('meclis_hadisler').select('id, metn, menbe').order('yaradildi', { ascending: true }),
       supabase.from('meclis_qiyab_qeydleri').select('person_id, week_id, day, status'),
     ]);
 
@@ -47,21 +77,20 @@ export async function pullFromSupabase(): Promise<SupabaseSnapshot | null> {
 
 export async function pushPerson(person: Person): Promise<{ remoteId: string } | null> {
   try {
-    const meclisRes = await supabase
-      .from('meclis_qeydler')
-      .select('id')
-      .order('tarix', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!meclisRes.data) {
-      console.error('[sync] meclis tapilmadi');
+    const meclisId = await currentMeclisId();
+    if (!meclisId) {
+      console.error('[sync] meclis tapılmadı');
       return null;
     }
 
     const insRes = await supabase
       .from('meclis_ishtirakchilar')
-      .insert({ meclis_id: meclisRes.data.id, ad: person.name, qiyab: 'var' })
+      .insert({
+        ...(isUuid(person.id) ? { id: person.id } : {}),
+        meclis_id: meclisId,
+        ad: person.name,
+        qiyab: 'var',
+      })
       .select('id')
       .single();
 
@@ -77,6 +106,7 @@ export async function pushPerson(person: Person): Promise<{ remoteId: string } |
 }
 
 export async function deletePerson(id: string): Promise<void> {
+  if (!isUuid(id)) return;
   try {
     const { error } = await supabase.from('meclis_ishtirakchilar').delete().eq('id', id);
     if (error) console.error('[sync] deletePerson xetasi:', error.message);
@@ -87,18 +117,17 @@ export async function deletePerson(id: string): Promise<void> {
 
 export async function pushHadith(hadith: Hadith): Promise<{ remoteId: string } | null> {
   try {
-    const meclisRes = await supabase
-      .from('meclis_qeydler')
-      .select('id')
-      .order('tarix', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!meclisRes.data) return null;
+    const meclisId = await currentMeclisId();
+    if (!meclisId) return null;
 
     const insRes = await supabase
       .from('meclis_hadisler')
-      .insert({ meclis_id: meclisRes.data.id, metn: hadith.text, menbe: hadith.source })
+      .insert({
+        ...(isUuid(hadith.id) ? { id: hadith.id } : {}),
+        meclis_id: meclisId,
+        metn: hadith.text,
+        menbe: hadith.source,
+      })
       .select('id')
       .single();
 
@@ -114,6 +143,7 @@ export async function pushHadith(hadith: Hadith): Promise<{ remoteId: string } |
 }
 
 export async function deleteHadith(id: string): Promise<void> {
+  if (!isUuid(id)) return;
   try {
     const { error } = await supabase.from('meclis_hadisler').delete().eq('id', id);
     if (error) console.error('[sync] deleteHadith xetasi:', error.message);
@@ -128,6 +158,7 @@ export async function pushAttendance(
   day: number,
   status: AttendanceStatus | null
 ): Promise<void> {
+  if (!isUuid(personId)) return;
   try {
     if (status === null) {
       const { error } = await supabase
@@ -163,9 +194,11 @@ export async function ensureInitialMeclis(): Promise<void> {
       const today = new Date().toISOString().slice(0, 10);
       const ins = await supabase
         .from('meclis_qeydler')
-        .insert({ tarix: today, movzu: 'Ilk meclis' });
+        .insert({ tarix: today, movzu: 'İlk məclis' })
+        .select('id')
+        .single();
       if (ins.error) console.error('[sync] meclis yaratma xetasi:', ins.error.message);
-      else console.log('[sync] ilk meclis yaradildi');
+      else meclisIdCache = ins.data.id;
     }
   } catch (err) {
     console.error('[sync] ensureInitialMeclis xetasi:', err);

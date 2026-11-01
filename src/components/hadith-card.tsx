@@ -44,22 +44,25 @@ export function HadithCard() {
     <section aria-label="Hədis" className="hadith-shell">
       <span className="hadith-light" aria-hidden="true" />
       <span className="hadith-light-trail" aria-hidden="true" />
-      <div className="hadith-shell-inner px-6 py-8 sm:px-10 sm:py-10">
-        <p className="mb-6 text-xs font-medium tracking-kicker text-accent uppercase">
-          Hədis
-        </p>
+      <div className="hadith-shell-inner px-6 py-9 sm:px-12 sm:py-12">
+        <div className="mb-7 flex items-center justify-between">
+          <p className="text-xs font-semibold tracking-kicker text-accent uppercase">Həftənin hədisi</p>
+          {hadiths.length > 0 ? (
+            <p className="text-xs text-subtle tabular-nums">{index + 1} / {hadiths.length}</p>
+          ) : null}
+        </div>
         {!hydrated ? (
           <div className="space-y-3" dir="rtl">
-            <div className="h-6 w-5/6 rounded-sm bg-elevated" />
-            <div className="h-6 w-3/4 rounded-sm bg-elevated" />
-            <div className="h-4 w-1/3 rounded-sm bg-elevated" />
+            <div className="h-6 w-5/6 skeleton" />
+            <div className="h-6 w-3/4 skeleton" />
+            <div className="h-4 w-1/3 skeleton" />
           </div>
         ) : current ? (
           <div className="hadith-copy min-h-40" data-state={phase} dir="rtl" lang="ar">
-            <blockquote className="font-arabic text-xl leading-[1.9] text-fg sm:text-2xl">
+            <blockquote className="font-arabic text-2xl leading-[2] text-fg sm:text-[1.75rem]">
               {current.text}
             </blockquote>
-            <p className="mt-6 font-arabic text-sm tracking-wide text-muted">
+            <p className="mt-7 border-t border-border/60 pt-4 font-arabic text-sm tracking-wide text-accent/80">
               {current.source}
             </p>
           </div>

@@ -27,25 +27,25 @@ export function WeekOverview() {
   const hydrated = useAppStore((s) => s.hasHydrated);
   const today = useToday();
 
-  if (!hydrated || !today) return null;
+  if (!hydrated || !today) return <SectionSkeleton />;
 
   const weekId = isoWeekId(today);
   const monday = startOfISOWeek(today);
 
   return (
-    <section className="rounded-xl border border-border bg-surface/80 p-5 sm:p-6">
+    <section className="card-premium p-6 sm:p-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium tracking-kicker text-accent uppercase">
             Bu həftə
           </p>
-          <h2 className="mt-2 font-display text-2xl text-fg">Davamiyyət</h2>
+          <h2 className="mt-2 font-display text-3xl font-semibold text-fg">Davamiyyət</h2>
         </div>
         <p className="text-sm text-muted">{formatFridayDate(weekId)}</p>
       </div>
 
       {people.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
+        <p className="rounded-2xl border border-dashed border-border/80 bg-bg/30 px-6 py-10 text-center text-sm text-muted">
           Hələ ad əlavə edilməyib. Bütün adlar burada görünəcək.
         </p>
       ) : (
@@ -61,7 +61,7 @@ export function WeekOverview() {
 
           <ul className="divide-y divide-border">
             {people.map((person) => (
-              <li key={person.id} className="py-3 first:pt-0 last:pb-0">
+              <li key={person.id} className="-mx-2 rounded-lg px-2 py-3 transition-colors hover:bg-elevated/50">
                 <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))]">
                   <p className="break-words font-medium text-fg">{person.name}</p>
                   <div className="flex gap-2 sm:contents">
@@ -117,5 +117,15 @@ function LegendDot({ className, label }: { className: string; label: string }) {
       <span className={cn("size-2 rounded-full", className)} />
       {label}
     </span>
+  );
+}
+function SectionSkeleton() {
+  return (
+    <section className="card-premium space-y-4 p-6 sm:p-8" aria-busy="true">
+      <div className="skeleton h-3 w-20" />
+      <div className="skeleton h-7 w-40" />
+      <div className="skeleton h-4 w-full" />
+      <div className="skeleton h-4 w-5/6" />
+    </section>
   );
 }

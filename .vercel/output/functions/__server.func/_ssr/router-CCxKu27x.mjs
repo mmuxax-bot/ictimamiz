@@ -4,8 +4,9 @@ import { _ as lazyRouteComponent, b as useRouter, f as Scripts, g as Outlet, h a
 import { t as TriangleAlert } from "../_libs/lucide-react.mjs";
 import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
 import { n as persist, r as create, t as createJSONStorage } from "../_libs/zustand.mjs";
+import { t as createClient } from "../_libs/supabase__supabase-js.mjs";
 import { t as Toaster } from "../_libs/sonner.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-_83txrQH.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CCxKu27x.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var __defProp = Object.defineProperty;
@@ -395,6 +396,7 @@ var useAppStore = create()(persist((set, get) => ({
 	records: [],
 	hadithSeedVersion: 2,
 	hasHydrated: false,
+	syncStatus: "idle",
 	setHasHydrated: (value) => set({ hasHydrated: value }),
 	addPerson: (rawName) => {
 		const name = rawName.trim().replace(/\s+/g, " ");
@@ -483,10 +485,198 @@ function rankAbsentees(people, records, weekId) {
 			present: mine.filter((r) => r.status === "present").length,
 			absences: unexcused + excused
 		};
-	}).filter((row) => row.absences > 0).sort((a, b) => b.unexcused - a.unexcused || b.absences - a.absences || a.person.name.localeCompare(b.person.name, "az"));
+	}).sort((a, b) => b.unexcused - a.unexcused || b.absences - a.absences || a.person.name.localeCompare(b.person.name, "az"));
+}
+var DEFAULT_URL = "https://fdftfczxteyfjpbfonfc.supabase.co";
+var DEFAULT_KEY = "sb_publishable_XXZ7R1pJ6e2Y9I5_oEy2Bw_ID7zBlXN";
+var env = {
+	"BASE_URL": "/",
+	"DEV": false,
+	"MODE": "production",
+	"PROD": true,
+	"SSR": true,
+	"TSS_DEV_SERVER": "false",
+	"TSS_DEV_SSR_STYLES_BASEPATH": "/",
+	"TSS_DEV_SSR_STYLES_ENABLED": "true",
+	"TSS_DISABLE_CSRF_MIDDLEWARE_WARNING": "false",
+	"TSS_INLINE_CSS_ENABLED": "false",
+	"TSS_ROUTER_BASEPATH": "",
+	"TSS_SERVER_FN_BASE": "/_serverFn/",
+	"VITE_REVENUECAT_ANDROID_API_KEY": "goog_jaVuCGjMDAlKvNeptmmErHMpmKb"
+};
+var SUPABASE_URL = env.VITE_SUPABASE_URL || DEFAULT_URL;
+var SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || DEFAULT_KEY;
+var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var isUuid = (id) => UUID_RE.test(id);
+var meclisIdCache = null;
+async function currentMeclisId() {
+	if (meclisIdCache) return meclisIdCache;
+	meclisIdCache = (await supabase.from("meclis_qeydler").select("id").order("tarix", { ascending: false }).limit(1).maybeSingle()).data?.id ?? null;
+	return meclisIdCache;
+}
+/** Seed hadiths into Supabase once when the table is empty. */
+async function seedHadithsIfEmpty(seed) {
+	const { count, error } = await supabase.from("meclis_hadisler").select("id", {
+		count: "exact",
+		head: true
+	});
+	if (error || (count ?? 0) > 0) return;
+	const meclisId = await currentMeclisId();
+	if (!meclisId) return;
+	const rows = seed.map((h) => ({
+		meclis_id: meclisId,
+		metn: h.text,
+		menbe: h.source
+	}));
+	const ins = await supabase.from("meclis_hadisler").insert(rows);
+	if (ins.error) console.error("[sync] hadis seed xətası:", ins.error.message);
+}
+async function pullFromSupabase() {
+	try {
+		const [peopleRes, hadithRes, qiyabRes] = await Promise.all([
+			supabase.from("meclis_ishtirakchilar").select("id, ad, yaradildi").order("ad"),
+			supabase.from("meclis_hadisler").select("id, metn, menbe").order("yaradildi", { ascending: true }),
+			supabase.from("meclis_qiyab_qeydleri").select("person_id, week_id, day, status")
+		]);
+		if (peopleRes.error || hadithRes.error || qiyabRes.error) {
+			console.error("[sync] pull xetasi:", peopleRes.error?.message || hadithRes.error?.message || qiyabRes.error?.message);
+			return null;
+		}
+		return {
+			people: (peopleRes.data || []).map((r) => ({
+				id: r.id,
+				name: r.ad,
+				createdAt: new Date(r.yaradildi).getTime()
+			})),
+			hadiths: (hadithRes.data || []).map((r) => ({
+				id: r.id,
+				text: r.metn,
+				source: r.menbe || ""
+			})),
+			records: (qiyabRes.data || []).map((r) => ({
+				personId: r.person_id,
+				weekId: r.week_id,
+				day: r.day,
+				status: r.status
+			}))
+		};
+	} catch (err) {
+		console.error("[sync] pull xetasi:", err);
+		return null;
+	}
+}
+async function pushPerson(person) {
+	try {
+		const meclisId = await currentMeclisId();
+		if (!meclisId) {
+			console.error("[sync] meclis tapılmadı");
+			return null;
+		}
+		const insRes = await supabase.from("meclis_ishtirakchilar").insert({
+			...isUuid(person.id) ? { id: person.id } : {},
+			meclis_id: meclisId,
+			ad: person.name,
+			qiyab: "var"
+		}).select("id").single();
+		if (insRes.error) {
+			console.error("[sync] pushPerson xetasi:", insRes.error.message);
+			return null;
+		}
+		return insRes.data ? { remoteId: insRes.data.id } : null;
+	} catch (err) {
+		console.error("[sync] pushPerson xetasi:", err);
+		return null;
+	}
+}
+async function deletePerson(id) {
+	if (!isUuid(id)) return;
+	try {
+		const { error } = await supabase.from("meclis_ishtirakchilar").delete().eq("id", id);
+		if (error) console.error("[sync] deletePerson xetasi:", error.message);
+	} catch (err) {
+		console.error("[sync] deletePerson xetasi:", err);
+	}
+}
+async function pushHadith(hadith) {
+	try {
+		const meclisId = await currentMeclisId();
+		if (!meclisId) return null;
+		const insRes = await supabase.from("meclis_hadisler").insert({
+			...isUuid(hadith.id) ? { id: hadith.id } : {},
+			meclis_id: meclisId,
+			metn: hadith.text,
+			menbe: hadith.source
+		}).select("id").single();
+		if (insRes.error) {
+			console.error("[sync] pushHadith xetasi:", insRes.error.message);
+			return null;
+		}
+		return insRes.data ? { remoteId: insRes.data.id } : null;
+	} catch (err) {
+		console.error("[sync] pushHadith xetasi:", err);
+		return null;
+	}
+}
+async function deleteHadith(id) {
+	if (!isUuid(id)) return;
+	try {
+		const { error } = await supabase.from("meclis_hadisler").delete().eq("id", id);
+		if (error) console.error("[sync] deleteHadith xetasi:", error.message);
+	} catch (err) {
+		console.error("[sync] deleteHadith xetasi:", err);
+	}
+}
+async function pushAttendance(personId, weekId, day, status) {
+	if (!isUuid(personId)) return;
+	try {
+		if (status === null) {
+			const { error } = await supabase.from("meclis_qiyab_qeydleri").delete().eq("person_id", personId).eq("week_id", weekId).eq("day", day);
+			if (error) console.error("[sync] deleteAttendance xetasi:", error.message);
+			return;
+		}
+		const { error } = await supabase.from("meclis_qiyab_qeydleri").upsert({
+			person_id: personId,
+			week_id: weekId,
+			day,
+			status
+		}, { onConflict: "person_id,week_id,day" });
+		if (error) console.error("[sync] pushAttendance xetasi:", error.message);
+	} catch (err) {
+		console.error("[sync] pushAttendance xetasi:", err);
+	}
+}
+async function ensureInitialMeclis() {
+	try {
+		const res = await supabase.from("meclis_qeydler").select("id").limit(1);
+		if (res.error) {
+			console.error("[sync] ensureInitialMeclis xetasi:", res.error.message);
+			return;
+		}
+		if (!res.data || res.data.length === 0) {
+			const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+			const ins = await supabase.from("meclis_qeydler").insert({
+				tarix: today,
+				movzu: "İlk məclis"
+			}).select("id").single();
+			if (ins.error) console.error("[sync] meclis yaratma xetasi:", ins.error.message);
+			else meclisIdCache = ins.data.id;
+		}
+	} catch (err) {
+		console.error("[sync] ensureInitialMeclis xetasi:", err);
+	}
+}
+async function testSupabaseConnection() {
+	const res = await supabase.from("meclis_qeydler").select("id").limit(1);
+	if (res.error) {
+		console.error("[supabase] bağlantı xətası:", res.error.message);
+		return false;
+	}
+	return true;
 }
 function StoreProvider({ children }) {
 	(0, import_react.useEffect)(() => {
+		let syncing = false;
 		const finish = () => {
 			const current = useAppStore.getState();
 			const migrated = migrateHadiths(current.hadiths, current.hadithSeedVersion);
@@ -497,17 +687,102 @@ function StoreProvider({ children }) {
 			if (!useAppStore.getState().hasHydrated) useAppStore.getState().setHasHydrated(true);
 		};
 		const result = useAppStore.persist.rehydrate();
-		if (result && typeof result.then === "function") result.then(finish);
-		else finish();
+		const afterHydrate = async () => {
+			finish();
+			syncing = true;
+			useAppStore.setState({ syncStatus: "syncing" });
+			try {
+				if (!await testSupabaseConnection()) {
+					useAppStore.setState({ syncStatus: "offline" });
+					return;
+				}
+				await ensureInitialMeclis();
+				await seedHadithsIfEmpty(SEED_HADITHS);
+				let data = await pullFromSupabase();
+				if (!data) {
+					useAppStore.setState({ syncStatus: "offline" });
+					return;
+				}
+				if (data.people.length === 0) {
+					const local = useAppStore.getState();
+					if (local.people.length > 0) {
+						for (const p of local.people) await pushPerson(p);
+						for (const r of local.records) await pushAttendance(r.personId, r.weekId, r.day, r.status);
+						data = await pullFromSupabase() ?? data;
+					}
+				}
+				useAppStore.setState({
+					people: [...data.people].sort((a, b) => a.name.localeCompare(b.name, "az")),
+					hadiths: data.hadiths.length > 0 ? data.hadiths : useAppStore.getState().hadiths,
+					records: data.records,
+					syncStatus: "online"
+				});
+			} finally {
+				syncing = false;
+			}
+		};
+		if (result && typeof result.then === "function") result.then(() => void afterHydrate());
+		else afterHydrate();
 		const timeout = window.setTimeout(() => {
 			if (!useAppStore.getState().hasHydrated) useAppStore.getState().setHasHydrated(true);
 		}, 80);
-		return () => window.clearTimeout(timeout);
+		const unsub = useAppStore.subscribe((state, prev) => {
+			if (syncing) return;
+			if (state.people.length > prev.people.length) {
+				const added = state.people.find((p) => !prev.people.some((pp) => pp.id === p.id));
+				if (added) pushPerson(added).then((res) => {
+					if (res && res.remoteId !== added.id) {
+						const current = useAppStore.getState();
+						useAppStore.setState({
+							people: current.people.map((p) => p.id === added.id ? {
+								...p,
+								id: res.remoteId
+							} : p),
+							records: current.records.map((r) => r.personId === added.id ? {
+								...r,
+								personId: res.remoteId
+							} : r)
+						});
+					}
+				});
+			}
+			if (state.people.length < prev.people.length) {
+				const removed = prev.people.find((p) => !state.people.some((pp) => pp.id === p.id));
+				if (removed) deletePerson(removed.id);
+			}
+			if (state.hadiths.length > prev.hadiths.length) {
+				const added = state.hadiths.find((h) => !prev.hadiths.some((hh) => hh.id === h.id));
+				if (added) pushHadith(added).then((res) => {
+					if (res && res.remoteId !== added.id) {
+						const current = useAppStore.getState();
+						useAppStore.setState({ hadiths: current.hadiths.map((h) => h.id === added.id ? {
+							...h,
+							id: res.remoteId
+						} : h) });
+					}
+				});
+			}
+			if (state.hadiths.length < prev.hadiths.length) {
+				const removed = prev.hadiths.find((h) => !state.hadiths.some((hh) => hh.id === h.id));
+				if (removed) deleteHadith(removed.id);
+			}
+			if (state.records !== prev.records) {
+				for (const r of state.records) {
+					const old = prev.records.find((p) => p.personId === r.personId && p.weekId === r.weekId && p.day === r.day);
+					if (!old || old.status !== r.status) pushAttendance(r.personId, r.weekId, r.day, r.status);
+				}
+				for (const old of prev.records) if (!state.records.some((r) => r.personId === old.personId && r.weekId === old.weekId && r.day === old.day)) pushAttendance(old.personId, old.weekId, old.day, null);
+			}
+		});
+		return () => {
+			window.clearTimeout(timeout);
+			unsub();
+		};
 	}, []);
 	return children;
 }
-var styles_default = "/assets/styles-QCB8s6ay.css";
-var APP_NAME = "Məclis";
+var styles_default = "/assets/styles-B0DE50w_.css";
+var APP_NAME = "İctima";
 var Route$2 = createRootRoute({
 	head: () => ({
 		meta: [
@@ -578,9 +853,9 @@ function RootDocument() {
 		] })]
 	});
 }
-var $$splitComponentImporter$1 = () => import("./routes-XcUy79qD.mjs");
+var $$splitComponentImporter$1 = () => import("./routes-ifBl103o.mjs");
 var Route$1 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
-var $$splitComponentImporter = () => import("./admin-m87biqF5.mjs");
+var $$splitComponentImporter = () => import("./admin-BBxXPcEu.mjs");
 var Route = createFileRoute("/admin")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
 var rootRouteChildren = {
 	IndexRoute: Route$1.update({
